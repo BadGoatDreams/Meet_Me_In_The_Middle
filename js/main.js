@@ -1,11 +1,20 @@
 /* Example from Leaflet Quick Start Guide*/
 
+//var map = L.map('map').setView([45, -123], 10);
+
+// Replace with your Mapbox access token
+const mapboxAccessToken = 'pk.eyJ1IjoiYmFkZ29hdGRyZWFtcyIsImEiOiJjbTZpdzJlZzQwZDdxMmpvbzMzYm5zZHpwIn0.FS149B5ltQdbRgLL7ctZkQ';
+
 var map = L.map('map').setView([45, -123], 10);
 
-// Add tile layer
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+// Add Mapbox tile layer
+L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + mapboxAccessToken, {
+    attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> <strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>',
+    tileSize: 512,
+    maxZoom: 18,
+    zoomOffset: -1,
+    id: 'badgoatdreams/cm6zeg28000hk01re55nj1px4', // Corrected style ID
+    accessToken: mapboxAccessToken
 }).addTo(map);
 
 // Function to fetch and draw isochrone
@@ -111,6 +120,7 @@ if (navigator.geolocation) {
     }, function () {
         alert("Geolocation failed or permission denied.");
         console.log("Geolocation failed or permission denied.");
+        
     });
 } else {
     alert("Geolocation is not supported by this browser.");
@@ -168,8 +178,8 @@ async function loadMeetingPlaces() {
                     const centroid = turf.centroid(feature.geometry);
                     const latlng = L.latLng(centroid.geometry.coordinates[1], centroid.geometry.coordinates[0]);
                     const marker = L.circleMarker(latlng, {
-                        radius: 5,
-                        fillColor: "#ff7800",
+                        radius: 3,
+                        fillColor: "#0288D1",
                         color: "#000",
                         weight: 1,
                         opacity: 1,
