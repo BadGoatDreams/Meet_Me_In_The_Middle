@@ -5,11 +5,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        #map { height: 600px; } /* Adjust as needed */
+        #map { height: 1200px; } /* Adjust as needed */
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
      <script src="js/main.js"></script>
+     <form>
+        <label for="fname">Friend Location</label><br>
+        <input type="text" id="FLoc" name="fname"><br>
+        <label for="lname">Travel time (car)</label><br>
+        <input type="text" id="FTT" name="lname">
+        <input type="button" value="Submit" onclick="draw_user(event)">
+      </form> 
 </body>
 </html>
