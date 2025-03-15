@@ -23,7 +23,8 @@ let meetingPlacesLayer; // This will be a Leaflet layer group
 let markerLabelLayers = {}; // Store label layers
 
 async function fetchIsochrone(lat, lng, range = 300, message = "You are here!") {
-    let url = `http://20.118.209.69:5000/route?mode=isochrone&start=${lat},${lng}&range=${range}`;
+    const baseUrl = "https://meetmeinthemiddle.duckdns.org/route"; // Updated base URL
+    let url = `${baseUrl}?mode=isochrone&start=${lat},${lng}&range=${range}`;
 
     function getRandomHexColor() {
         return '#' + Math.floor(Math.random() * 16777215).toString(16);
