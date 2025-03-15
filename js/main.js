@@ -49,14 +49,41 @@ async function fetchIsochrone(lat, lng, range = 300, message = "You are here!") 
             }
         }).addTo(map);
 
-        isochroneLayers.push({ layer: layer, data: data }); // Store layer and data
+        const marker = L.marker([lat, lng]).addTo(map);
 
-        L.marker([lat, lng]).addTo(map).bindPopup(message).openPopup();
+        // Create a custom popup with an "x" button
+        const popupContent = document.createElement('div');
+        popupContent.innerHTML = `${message} <button onclick="removeMarkerAndIsochrone(${lat}, ${lng}, ${L.Util.stamp(marker)}, ${L.Util.stamp(layer)})">x</button>`;
+        marker.bindPopup(popupContent).openPopup();
+
+        isochroneLayers.push({ layer: layer, data: data, marker: marker }); // Store layer, data, and marker
+
         filterMeetingPlaces();
 
     } catch (error) {
         console.error("Error fetching isochrone:", error);
     }
+}
+
+// Function to remove the marker and the associated isochrone
+function removeMarkerAndIsochrone(lat, lng, markerId, layerId) {
+    // Find and remove the marker
+    const markerIndex = isochroneLayers.findIndex(item => L.Util.stamp(item.marker) === markerId);
+    if (markerIndex !== -1) {
+        map.removeLayer(isochroneLayers[markerIndex].marker);
+    }
+
+    // Find and remove the isochrone layer
+    const layerIndex = isochroneLayers.findIndex(item => L.Util.stamp(item.layer) === layerId);
+    if (layerIndex !== -1) {
+        map.removeLayer(isochroneLayers[layerIndex].layer);
+    }
+
+    // Remove the entry from the isochroneLayers array
+    isochroneLayers = isochroneLayers.filter((item, index) => index !== markerIndex && index !== layerIndex);
+
+    // Re-filter meeting places
+    filterMeetingPlaces();
 }
 
 function filterMeetingPlaces() {
@@ -68,14 +95,17 @@ function filterMeetingPlaces() {
             const meetingPoint = turf.point([layer.getLatLng().lng, layer.getLatLng().lat]);
             let insideAllIsochrones = true;
 
+            // If there are fewer than 2 isochrones, hide all meeting points and labels
             if (isochroneLayers.length < 2) {
-                if(markerLabelLayers[markerId]){
+                if (markerLabelLayers[markerId]) {
                     markerLabelLayers[markerId].remove();
                     delete markerLabelLayers[markerId];
                 }
+                layer.setStyle({ opacity: 0, fillOpacity: 0 }); // Hide the meeting point
                 return;
             }
 
+            // Check if the meeting point is inside all isochrones
             for (const isochrone of isochroneLayers) {
                 const isochronePolygon = turf.polygon(isochrone.data.features[0].geometry.coordinates);
                 if (!turf.booleanPointInPolygon(meetingPoint, isochronePolygon)) {
@@ -84,7 +114,9 @@ function filterMeetingPlaces() {
                 }
             }
 
+            // If the meeting point is inside all isochrones, show it and its label
             if (insideAllIsochrones) {
+                layer.setStyle({ opacity: 1, fillOpacity: 0.8 }); // Show the meeting point
                 if (!markerLabelLayers[markerId]) {
                     markerLabelLayers[markerId] = L.tooltip({ permanent: true, direction: 'top' })
                         .setContent(layer.feature.properties.name || layer.feature.properties.Name || "Label")
@@ -94,6 +126,8 @@ function filterMeetingPlaces() {
                     markerLabelLayers[markerId].addTo(map);
                 }
             } else {
+                // If the meeting point is not inside all isochrones, hide it and its label
+                layer.setStyle({ opacity: 0, fillOpacity: 0 }); // Hide the meeting point
                 if (markerLabelLayers[markerId]) {
                     markerLabelLayers[markerId].remove();
                     delete markerLabelLayers[markerId];
@@ -102,7 +136,6 @@ function filterMeetingPlaces() {
         }
     });
 }
-
 function clearIsochrones() {
     isochroneLayers.forEach(isochrone => {
         map.removeLayer(isochrone.layer);
