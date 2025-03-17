@@ -6,6 +6,7 @@
 const mapboxAccessToken = 'pk.eyJ1IjoiYmFkZ29hdGRyZWFtcyIsImEiOiJjbTZpdzJlZzQwZDdxMmpvbzMzYm5zZHpwIn0.FS149B5ltQdbRgLL7ctZkQ';
 
 var map = L.map('map').setView([45, -123], 10);
+var iso_overlap_flag = true;
 
 // Add Mapbox tile layer
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=' + mapboxAccessToken, {
@@ -169,7 +170,8 @@ function draw_user(event) {
 
 let User_dict = {};
 
-function getCoordinatesOnClick(map) {
+function getCoordinatesOnClick(map, iso_flag = true) {
+if (iso_flag === true){
     map.on('click', function (e) {
         let userID = Object.keys(User_dict).length + 1;
         let lat = e.latlng.lat;
@@ -178,10 +180,14 @@ function getCoordinatesOnClick(map) {
         console.log(User_dict);
         message1 = "Friend " + userID + " Is here";
         promptForTravelTime(lat, lng, message1);
-    });
+    }); 
+} else{
+    //add route code here later 
 }
 
-getCoordinatesOnClick(map);
+}
+
+getCoordinatesOnClick(map, iso_overlap_flag);
 
 async function loadMeetingPlaces() {
     try {
@@ -244,4 +250,171 @@ function promptForTravelTime(lat, lng, message = "You are here!") {
             alert("Invalid travel time. Please enter a number.");
         }
     }
+}
+
+
+const routeModeButton = document.getElementById('routeModeButton');
+let routeModeEnabled = false; // Initialize to isochrone mode
+
+routeModeButton.addEventListener('click', function() {
+    routeModeEnabled = toggleMode(map, routeModeEnabled); // Toggle and update
+
+    if (routeModeEnabled) {
+        routeModeButton.textContent = "Disable Route Mode";
+    } else {
+        routeModeButton.textContent = "Enable Route Mode";
+    }
+});
+
+// Initialize with isochrone mode
+toggleClickMode(map, routeModeEnabled);
+
+
+function toggleClickMode(map, routeModeEnabled) {
+    if (routeModeEnabled) {
+        // Disable isochrone clicking, enable route clicking
+        map.off('click'); // Remove any existing click handlers
+
+        map.on('click', function(e) {
+            // Route clicking logic here
+            let clickLatLng = e.latlng;
+            routeAllPointsToClick(clickLatLng);
+        });
+    } else {
+        // Enable isochrone clicking, disable route clicking
+        map.off('click'); // Remove any existing click handlers
+        getCoordinatesOnClick(map); // Re-enable isochrone clicking
+    }
+}
+
+function routeAllPointsToClick(clickLatLng) {
+    // Clear previous routes
+    map.eachLayer(layer => {
+        if (layer instanceof L.Polyline) { // Assuming routes are polylines
+            map.removeLayer(layer);
+        }
+    });
+
+    // Route isochrone markers
+    if (isochroneLayers) {
+        isochroneLayers.forEach(isochrone => {
+            if (isochrone.marker) {
+                let start = [isochrone.marker.getLatLng().lat, isochrone.marker.getLatLng().lng];
+                let end = [clickLatLng.lat, clickLatLng.lng];
+                fetchRoute(start, end);
+            }
+        });
+    }
+}
+async function fetchRoute(start, end, routeIndex) { // Added routeIndex for color variation
+    const flaskRouteUrl = 'https://meetmeinthemiddle.duckdns.org/route'; // Your Flask server's route URL
+
+    try {
+        const response = await fetch(flaskRouteUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                mode: 'route',
+                coordinates: [
+                    [start[1], start[0]],
+                    [end[1], end[0]]
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error fetching route:', errorData);
+            throw new Error(`Failed to fetch route. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Route Data:', data);
+
+        // Extract duration
+        const durationSeconds = data.features[0].properties.summary.duration;
+        const durationMinutes = Math.round(durationSeconds / 60);
+
+        // Color Variation
+        const colors = ['red', 'green', 'purple', 'orange', 'brown']; // Add more colors if needed
+        const routeColor = colors[routeIndex % colors.length]; // Cycle through colors
+
+        const routeLayer = L.geoJSON(data, {
+            style: function () {
+                return { color: routeColor, weight: 5, opacity: 0.7 };
+            }
+        }).addTo(map);
+
+        // Popup with duration
+        routeLayer.bindPopup(`Driving time: ${durationMinutes} minutes`);
+
+    } catch (error) {
+        console.error('Error fetching route:', error);
+    }
+}
+
+function routeFriendsToClick(clickLatLng) {
+    // Clear previous routes
+    map.eachLayer(layer => {
+        if (layer instanceof L.Polyline) {
+            map.removeLayer(layer);
+        }
+    });
+
+    // Route friend points (isochrone markers)
+    if (isochroneLayers) {
+        isochroneLayers.forEach((isochrone, index) => { // Added index
+            if (isochrone.marker) {
+                let start = [isochrone.marker.getLatLng().lat, isochrone.marker.getLatLng().lng];
+                let end = [clickLatLng.lat, clickLatLng.lng];
+                fetchRoute(start, end, index); // Passed index
+            }
+        });
+    }
+}
+
+function toggleClickMode(map, routeModeEnabled) {
+    if (routeModeEnabled) {
+        // Disable isochrone clicking, enable route clicking
+        map.off('click'); // Remove any existing click handlers
+
+        map.on('click', function(e) {
+            // Route clicking logic here
+            let clickLatLng = e.latlng;
+            routeFriendsToClick(clickLatLng);
+        });
+    } else {
+        // Enable isochrone clicking, disable route clicking
+        map.off('click'); // Remove any existing click handlers
+        getCoordinatesOnClick(map); // Re-enable isochrone clicking
+    }
+}
+
+function toggleMode(map, routeModeEnabled) {
+    routeModeEnabled = !routeModeEnabled; // Toggle the mode
+    toggleClickMode(map, routeModeEnabled);
+    return routeModeEnabled; // Return the updated mode
+}
+
+// ... (Your other JavaScript code, including getCoordinatesOnClick, etc.) ...
+
+function getCoordinatesOnClick(map) {
+    map.on('click', function (e) {
+        let userID = Object.keys(User_dict).length + 1;
+        let lat = e.latlng.lat;
+        let lng = e.latlng.lng;
+        User_dict["Friend_" + userID] = [lat, lng];
+        console.log(User_dict);
+        message1 = "Friend " + userID + " Is here";
+        promptForTravelTime(lat, lng, message1);
+    });
+}
+
+// Example of how to toggle the mode
+function toggleMode(map, routeModeEnabled) {
+    routeModeEnabled = !routeModeEnabled; // Toggle the mode
+    toggleClickMode(map, routeModeEnabled);
+    return routeModeEnabled; // Return the updated mode
 }

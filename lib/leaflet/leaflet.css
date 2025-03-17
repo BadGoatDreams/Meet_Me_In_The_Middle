@@ -659,3 +659,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		print-color-adjust: exact;
 		}
 	}
+	#map { 
+		height: 500px;
+		position: relative; /* Make the map a positioning context */
+	}
+	#routeModeButton {
+		position: absolute; /* Position the button relative to the map */
+		top: 10px; /* Adjust as needed */
+		left: 10px; /* Adjust as needed */
+		z-index: 1000; /* Ensure the button is on top */
+	}
