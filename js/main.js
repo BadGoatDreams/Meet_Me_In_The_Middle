@@ -191,7 +191,7 @@ getCoordinatesOnClick(map, iso_overlap_flag);
 
 async function loadMeetingPlaces() {
     try {
-        const response = await fetch('data/meeting_places.geojson');
+        const response = await fetch('data/michigan_meeting_places.geojson');
         if (!response.ok) {
             throw new Error('Failed to load meeting places GeoJSON');
         }
